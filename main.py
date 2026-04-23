@@ -90,6 +90,17 @@ class VkDownloader():
             print(f'[{response.status_code}] Unknown error when receiving video data')
             return None
 
+    def get_video_source_url(
+        self,
+        video_data: str,
+        quality: Optional[str] = None
+    ):
+        if 'files' in video_data[0]:
+            url = video_data[0]['files'][quality]
+            return url
+        else:
+            print('[-] Server did not send links to the video')
+
     def download_video(
         self,
         video_id: str,
@@ -102,38 +113,31 @@ class VkDownloader():
         else:
             video_data = self.get_video_data(video_id)
 
-        if 'files' in video_data[0]:
-            if not quality:
-                media_qualities = video_data[0]['files'].keys()
-                for q in self.media_qualities:
-                    if q in media_qualities:
-                        quality = q
-                        break
-            else:
-                if quality.endswith('p'): quality = quality[:-1]
-                if not quality.startswith('mp4_'): quality = f'mp4_{quality}'
-                if quality not in self.media_qualities:
-                    print('[-] Incorrect media quality')
-                    return False
-
-            url = video_data[0]['files'][quality]
-            response = self.session.get(url, stream=True)
-            downloaded_bytes = 0
-            size = int(response.headers.get('Content-Length'))/1024**2
-            time_start = time.perf_counter()
-            with open(output_filename if output_filename else f'video_{video_id}.mp4', 'wb') as f:
-                for chunk in response.iter_content(chunk_size=1024*1024):
-                    if chunk:
-                        f.write(chunk)
-                        downloaded_bytes += len(chunk)
-
-                        elapsed_time = time.perf_counter() - time_start
-                        mb = downloaded_bytes / (1024 * 1024)
-                        speed = mb / elapsed_time if elapsed_time > 0 else 0
-                        print(f'[i] {mb:.2f}/{size:.2f} MB | Speed: {speed:.2f} MB/s', end='\r', flush=True)
+        if not quality:
+            media_qualities = video_data[0]['files'].keys()
+            for q in self.media_qualities:
+                if q in media_qualities:
+                    quality = q
+                    break
         else:
-            print('[-] Server did not send links to the video')
+            if quality.endswith('p'): quality = quality[:-1]
+            if not quality.startswith('mp4_'): quality = f'mp4_{quality}'
+            if quality not in self.media_qualities:
+                print('[-] Incorrect media quality')
+                return False
 
-if __name__ == '__main__':
-    downloader = VkDownloader()
-    downloader.download_video('-168455361_456256684')
+        url = self.get_video_source_url(video_data, quality)
+        response = self.session.get(url, stream=True)
+        downloaded_bytes = 0
+        size = int(response.headers.get('Content-Length'))/1024**2
+        time_start = time.perf_counter()
+        with open(output_filename if output_filename else f'video_{video_id}.mp4', 'wb') as f:
+            for chunk in response.iter_content(chunk_size=1024*1024):
+                if chunk:
+                    f.write(chunk)
+                    downloaded_bytes += len(chunk)
+
+                    elapsed_time = time.perf_counter() - time_start
+                    mb = downloaded_bytes / (1024 * 1024)
+                    speed = mb / elapsed_time if elapsed_time > 0 else 0
+                    print(f'[i] {mb:.2f}/{size:.2f} MB | Speed: {speed:.2f} MB/s', end='\r', flush=True)
