@@ -16,7 +16,7 @@ pip install -r requirements.txt
 ## Usage
 
 ```python
-from vk_downloader import VkDownloader
+from vk_downloader.main import VkDownloader
 
 downloader = VkDownloader()
 downloader.download_video(
