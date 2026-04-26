@@ -1,6 +1,6 @@
 # VK-Downloader
 
-A simple media downloader from the website vk.ru
+A simple async media downloader from the website vk.ru
 
 > [!IMPORTANT]
 > Currently, only video downloads are supported.
@@ -16,14 +16,15 @@ pip install -r requirements.txt
 ## Usage
 
 ```python
-from vk_downloader.main import VkDownloader
+import asyncio
+from src.downloader import VkDownloader
 
-downloader = VkDownloader()
-downloader.download_video(
-    video_id='...', 
-    output_filename='video.mp4',
-    quality='2160p' # 2160p -> 1440p -> 1080p -> 720p -> 480p -> 360p -> 240p -> 144p
-)
+async def main():
+    async with VkDownloader() as dl:
+        await dl.download_video('') # Paste here video_id
+
+if __name__ == '__main__':
+    asyncio.run(main())
 ```
 
 > [!IMPORTANT]
