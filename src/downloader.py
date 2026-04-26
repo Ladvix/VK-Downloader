@@ -1,5 +1,6 @@
 import time
 import httpx
+import asyncio
 from typing import Dict, Optional
 from .config import VK_APPS
 
@@ -13,6 +14,8 @@ class VkDownloader():
         self.client_id = VK_APPS['video_web']['client_id']
         self.client_secret = VK_APPS['video_web']['client_secret']
         self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36'
+        self.token_expired_at = 0
+        self._lock = asyncio.Lock()
 
         self.headers = {
             'User-Agent': self.user_agent,
@@ -41,6 +44,12 @@ class VkDownloader():
     async def __aexit__(self, exc_type, exc, tb):
         await self.client.aclose()
 
+    async def _check_token(self):
+        if not self.access_token or time.time() >= self.token_expired_at:
+            async with self._lock:
+                if not self.access_token or time.time() >= self.token_expired_at:
+                    await self.get_anonym_token()
+
     async def get_anonym_token(self) -> Optional[str]:
         params = {
             'act': 'get_anonym_token'
@@ -58,6 +67,7 @@ class VkDownloader():
         if response.status_code == 200:
             data = response.json()
             self.access_token = data['data']['access_token']
+            self.token_expired_at = data['data'].get('expired_at', 0) 
             return self.access_token
         else:
             print(f'[{response.status_code}] Unknown error when receiving anonym token')
@@ -71,6 +81,8 @@ class VkDownloader():
         if not self.access_token:
             print('[!] This method requires authorization')
             return None
+        else:
+            await self._check_token()
 
         params = {
             'v': self.api_ver,
